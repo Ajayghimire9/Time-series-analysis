@@ -1,51 +1,103 @@
-# Japan's Agricultural Symphony: A Data-Driven Exploration 🌾
+# Agricultural Price Forecasting & Time-Series Analytics
 
-## Overview 📋
+**Production-style machine learning project for agricultural price forecasting, time-series feature engineering, reproducible evaluation, and software delivery.**
 
-This project dives deep into the intricate relationship between Japan's rich cultural traditions and its agricultural sector. Utilizing a dataset managed by the Ministry of Agriculture, Forestry, and Fisheries (MAFF), we aim to provide a comprehensive analysis of the subject matter.
+[![CI](https://github.com/Ajayghimire9/Time-series-analysis/actions/workflows/ci.yml/badge.svg)](https://github.com/Ajayghimire9/Time-series-analysis/actions/workflows/ci.yml)
 
-### Key Features ✨
+## Overview
 
-- **Data Integrity**: Advanced data preparation and imputation techniques to ensure robust analysis.
-- **Forecasting**: Utilization of Linear Regression, Multiple Linear Regression, and Random Forest models for future agricultural yield predictions.
-- **Transparency**: Implementation of Explainable AI (XAI) methods like SHAP, SHAPley, and LIME for model interpretability.
-- **Policy Insights**: Data-driven discussions to aid policy-making and agricultural strategies.
+This project analyzes Japanese agricultural price observations and builds a leakage-aware forecasting workflow. The original exploratory analysis has been reorganized into reusable Python components so the repository demonstrates both **machine-learning knowledge and engineering discipline**.
 
-## Table of Contents 📚
+### Pipeline
 
-1. [Introduction](#introduction-)
-2. [Dataset](#dataset-)
-3. [Data Pre-processing](#data-preprocessing-)
-4. [Forecasting](#forecasting-)
-5. [Installation](#installation-)
-6. [Usage](#usage-)
-7. [Contributing](#contributing-)
-8. [License](#license-)
+`Raw data → validation → cleaning → lag features → chronological split → baseline models → evaluation → reproducible delivery`
 
-## Introduction 🌱
+## Key engineering decisions
 
-Japan's rich cultural heritage is intricately woven into its agricultural fabric. This project aims to explore this relationship in depth, backed by data and predictive modeling. Our journey is led by a dataset curated by the Ministry of Agriculture, Forestry, and Fisheries (MAFF), offering a comprehensive look at crop yields across different timelines.
+- **Chronological validation:** future observations are never shuffled into training data.
+- **Baseline-first modeling:** Ridge provides a simple benchmark before a non-linear Random Forest model.
+- **Explicit metrics:** MAE and RMSE are calculated from predictions rather than copied into documentation.
+- **Reusable code:** forecasting logic lives in `src/` instead of a single notebook-style script.
+- **Automated quality:** pytest and Ruff run in GitHub Actions.
+- **Containerized execution:** Docker provides a consistent runtime.
 
-## Dataset 📊
+## Repository structure
 
-The dataset used in this project shows weekly vegetable prices in yen per kilogram. It covers various vegetables like Cabbage, Green Onion, Lettuce, Potato, Onion, and many more. The dataset contains several missing values and is not formatted properly.
+```text
+.
+├── Datasets/                  # Original project datasets
+├── src/
+│   ├── data/                  # Loading and cleaning
+│   ├── models/                # Forecasting and evaluation
+│   └── pipeline.py            # End-to-end entry point
+├── tests/                     # Automated tests
+├── .github/workflows/         # CI pipeline
+├── Dockerfile
+├── Makefile
+├── pyproject.toml
+└── README.md
+```
 
-### Data Pre-processing 🧹
-
-The data is cleaned and prepared for analysis. Missing values are addressed using mean and median imputation, LOCF (Last Observation Carried Forward), and NOCB (Next Observation Carried Backward) methods. [More details here]
-
-### Forecasting 📈
-
-This section focuses on forecasting future agricultural outputs using Linear Regression, Multiple Linear Regression, and Random Forest algorithms. [More details here]
-
-## Installation 🔧
+## Quick start
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-username/your-repo-name.git
+git clone https://github.com/Ajayghimire9/Time-series-analysis.git
+cd Time-series-analysis
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\\Scripts\\activate
+pip install -e '.[dev]'
+pytest
+python -m src.pipeline
+```
 
-# Navigate to the project directory
-cd your-repo-name
+## Docker
 
-# Install required packages
-pip install -r requirements.txt
+```bash
+docker build -t agricultural-price-forecasting .
+docker run --rm agricultural-price-forecasting
+```
+
+## Development commands
+
+```bash
+make install
+make test
+make lint
+make run
+```
+
+## Technology
+
+**Python · Pandas · NumPy · scikit-learn · pytest · Ruff · Docker · GitHub Actions · Git**
+
+These technologies are included because they are implemented in the repository—not simply listed as portfolio keywords.
+
+## Data
+
+The project uses the Japanese agricultural price dataset already included in the repository. The original analysis investigated missing observations and multiple imputation strategies. The refactored pipeline adds a cleaner foundation for reproducible modeling.
+
+## Model evaluation
+
+The pipeline reports:
+
+- **MAE** — average absolute prediction error
+- **RMSE** — penalizes larger errors more strongly
+
+No performance numbers are hard-coded into this README. Run the pipeline to generate the current metrics from the repository data.
+
+## Roadmap
+
+- [ ] Add formal data-quality validation
+- [ ] Add DVC dataset versioning
+- [ ] Add MLflow experiment tracking
+- [ ] Persist trained model artifacts
+- [ ] Add forecasting visualization/report generation
+- [ ] Add scheduled pipeline execution
+
+## Why this project matters for Data Engineering / MLOps
+
+The focus is deliberately broader than model training. The project demonstrates the workflow expected around a production ML system: structured code, reproducible environments, automated tests, CI, data handling, chronological evaluation, and a clear path toward experiment and artifact management.
+
+## License
+
+MIT

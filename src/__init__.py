@@ -1,0 +1,1 @@
+"""Agricultural price forecasting project."""
