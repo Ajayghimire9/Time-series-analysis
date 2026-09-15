@@ -1,4 +1,5 @@
 """Reusable forecasting models and evaluation helpers."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -28,9 +29,7 @@ def chronological_split(X, y, test_size=0.2):
 def train_models(X_train, y_train):
     models = {
         "ridge": Ridge(alpha=1.0),
-        "random_forest": RandomForestRegressor(
-            n_estimators=300, random_state=42, n_jobs=-1
-        ),
+        "random_forest": RandomForestRegressor(n_estimators=300, random_state=42, n_jobs=-1),
     }
     for model in models.values():
         model.fit(X_train, y_train)

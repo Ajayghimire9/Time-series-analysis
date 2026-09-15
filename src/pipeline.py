@@ -1,4 +1,5 @@
 """End-to-end forecasting pipeline with optional MLflow tracking."""
+
 from __future__ import annotations
 
 import json
@@ -57,7 +58,7 @@ def main() -> None:
         results[name] = metrics
         if tracking_uri:
             registered_name = f"agri-forecast-{name.lower()}"
-            with mlflow.start_run(run_name=f"{target_name}-{name}") as run:
+            with mlflow.start_run(run_name=f"{target_name}-{name}"):
                 mlflow.log_params(
                     {"model": name, "target": target_name, "lags": lags, "test_size": 0.2}
                 )

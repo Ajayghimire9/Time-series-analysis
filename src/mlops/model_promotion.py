@@ -1,8 +1,10 @@
 """Promote a candidate MLflow model when it beats the current champion."""
+
 from __future__ import annotations
 
 import mlflow
 from mlflow import MlflowClient
+from mlflow.exceptions import MlflowException
 
 
 def promote_if_better(model_name: str, candidate_version: str, candidate_rmse: float) -> str:
@@ -11,7 +13,7 @@ def promote_if_better(model_name: str, candidate_version: str, candidate_rmse: f
     client.set_registered_model_alias(model_name, "candidate", candidate_version)
     try:
         champion = client.get_model_version_by_alias(model_name, "champion")
-    except Exception:
+    except MlflowException:
         champion = None
 
     if champion is None:

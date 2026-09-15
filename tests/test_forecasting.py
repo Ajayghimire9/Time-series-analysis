@@ -1,6 +1,7 @@
 import pandas as pd
 import pytest
-from src.models.forecasting import make_lag_features, chronological_split
+
+from src.models.forecasting import chronological_split, make_lag_features
 
 
 def test_lag_features_preserve_alignment():

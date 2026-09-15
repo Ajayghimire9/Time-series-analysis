@@ -10,3 +10,11 @@ venv/
 .DS_Store
 reports/generated/
 *.log
+
+# Local development and generated outputs
+*.egg-info/
+build/
+dist/
+artifacts/
+mlruns/
+mlflow.db

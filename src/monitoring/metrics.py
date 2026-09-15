@@ -1,4 +1,5 @@
 """Prometheus metrics for the inference service."""
+
 from prometheus_client import Counter, Histogram
 
 REQUESTS = Counter("forecast_requests_total", "Total forecast API requests")
