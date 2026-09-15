@@ -183,7 +183,7 @@ For larger production environments, the same training entry point can be orchest
 
 **Python · Pandas · NumPy · scikit-learn · MLflow · DVC · FastAPI · Docker · Docker Compose · Kubernetes · Prometheus · Grafana · pytest · Ruff · GitHub Actions · Git**
 
-These technologies are included because the repository contains corresponding implementation/configuration—not merely CV keywords.
+These technologies are included because the repository contains corresponding implementation/configuration.
 
 ## Engineering principles
 
