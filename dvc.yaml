@@ -1,0 +1,10 @@
+stages:
+  validate:
+    cmd: python -m src.pipeline
+    deps:
+      - Datasets/dataframe.csv
+      - src/pipeline.py
+      - src/data/validation.py
+      - src/models/forecasting.py
+    outs:
+      - reports/validation.marker
