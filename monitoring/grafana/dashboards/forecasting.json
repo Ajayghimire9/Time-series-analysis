@@ -1,0 +1,34 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "graphTooltip": 0,
+  "panels": [
+    {
+      "type": "stat",
+      "title": "API Uptime",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "targets": [{"expr": "up{job=\"forecasting-api\"}", "refId": "A"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Request Rate",
+      "gridPos": {"h": 8, "w": 12, "x": 6, "y": 0},
+      "targets": [{"expr": "rate(forecast_requests_total[5m])", "refId": "A"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "P95 Latency",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "targets": [{"expr": "histogram_quantile(0.95, sum(rate(forecast_request_latency_seconds_bucket[5m])) by (le))", "refId": "A"}]
+    },
+    {
+      "type": "stat",
+      "title": "Predictions (5m)",
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+      "targets": [{"expr": "increase(forecast_predictions_total[5m])", "refId": "A"}]
+    }
+  ],
+  "schemaVersion": 39,
+  "title": "Agricultural Forecasting Service",
+  "version": 1
+}
