@@ -19,6 +19,20 @@ spec:
           env:
             - name: MLFLOW_TRACKING_URI
               value: http://mlflow:5000
+          ports:
+            - containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 20
           resources:
             requests:
               cpu: "250m"
