@@ -1,0 +1,31 @@
+name: Scheduled Retraining
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 4 * * 1"
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install package
+        run: pip install -e .
+      - name: Train and evaluate
+        env:
+          DATA_PATH: Datasets/dataframe.csv
+          TARGET_COLUMN: ${{ vars.FORECAST_TARGET }}
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+          MLFLOW_EXPERIMENT: agricultural-price-forecasting
+        run: python -m src.pipeline
+      - name: Publish training report
+        uses: actions/upload-artifact@v4
+        with:
+          name: forecasting-training-report
+          path: reports/model_metrics.json
