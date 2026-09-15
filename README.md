@@ -1,6 +1,6 @@
 # Agricultural Price Forecasting & Time-Series MLOps
 
-**End-to-end machine-learning system for agricultural price forecasting, experiment tracking, data versioning, monitored inference, and Kubernetes deployment.**
+**End-to-end machine-learning system for agricultural price forecasting, experiment tracking, data versioning, automated retraining, model promotion, monitored inference, and Kubernetes deployment.**
 
 [![CI](https://github.com/Ajayghimire9/Time-series-analysis/actions/workflows/ci.yml/badge.svg)](https://github.com/Ajayghimire9/Time-series-analysis/actions/workflows/ci.yml)
 
@@ -9,7 +9,7 @@
 ```text
 Agricultural data
       ↓
-DVC versioning → data-quality validation
+DVC versioning → data-quality validation → drift analysis
       ↓
 Feature engineering → chronological validation
       ↓
@@ -17,13 +17,15 @@ Ridge / Random Forest
       ↓
 MAE / RMSE
       ↓
-MLflow experiments + model registry
+MLflow tracking → candidate model → champion alias
       ↓
 Docker → FastAPI
       ↓
 Kubernetes (2 replicas)
       ↓
-Prometheus → Grafana
+Prometheus → Grafana → operational alerts
+
+GitHub Actions → scheduled retraining → training report → MLflow
 ```
 
 ## Implemented capabilities
@@ -33,11 +35,14 @@ Prometheus → Grafana
 - Leakage-aware chronological splitting
 - Ridge baseline and Random Forest benchmark
 - MAE/RMSE evaluation
+- Configurable target column and lag count
 
 ### MLOps
 - **MLflow** experiment tracking and registered models
+- MLflow `candidate` and `champion` aliases with RMSE-based promotion
 - **DVC** pipeline definition for reproducibility
 - Explicit data-quality validation gates
+- Lightweight PSI-based distribution drift detection
 - Reproducible dependency management
 - pytest + Ruff quality gates
 
@@ -52,8 +57,16 @@ Prometheus → Grafana
 
 ### Observability
 - Prometheus scraping configuration
-- Grafana Prometheus datasource provisioning
-- Metrics designed for operational dashboards
+- Prometheus alert rules for API availability and high latency
+- Grafana datasource provisioning
+- Prebuilt Grafana dashboard for request rate, latency, uptime, and predictions
+
+### Automation
+- GitHub Actions CI on pushes and pull requests
+- Weekly scheduled retraining workflow
+- Manual retraining through `workflow_dispatch`
+- Training report uploaded as a GitHub Actions artifact
+- Optional MLflow tracking through `MLFLOW_TRACKING_URI` secret
 
 ## Repository structure
 
@@ -61,22 +74,16 @@ Prometheus → Grafana
 .
 ├── Datasets/                  # Source dataset
 ├── src/
-│   ├── data/
-│   │   ├── loader.py
-│   │   └── validation.py
-│   ├── models/
-│   │   └── forecasting.py
-│   ├── mlops/
-│   │   └── mlflow_tracker.py
-│   ├── monitoring/
-│   │   └── metrics.py
-│   ├── api.py
-│   └── pipeline.py
+│   ├── data/                 # Loading and validation
+│   ├── models/               # Feature engineering, training, evaluation
+│   ├── mlops/                # MLflow tracking and model promotion
+│   ├── monitoring/           # Prometheus metrics and drift detection
+│   ├── api.py                # FastAPI inference service
+│   └── pipeline.py           # End-to-end training pipeline
 ├── tests/
-├── k8s/
-├── monitoring/
-│   └── grafana/
-├── .github/workflows/
+├── k8s/                      # Kubernetes manifests
+├── monitoring/               # Prometheus, alerts, Grafana provisioning
+├── .github/workflows/        # CI and scheduled retraining
 ├── dvc.yaml
 ├── docker-compose.yml
 ├── Dockerfile
@@ -96,6 +103,12 @@ ruff check .
 python -m src.pipeline
 ```
 
+Choose a target explicitly when needed:
+
+```bash
+TARGET_COLUMN=Radish python -m src.pipeline
+```
+
 ## Full local MLOps stack
 
 ```bash
@@ -107,20 +120,17 @@ Services:
 | Service | Port | Purpose |
 |---|---:|---|
 | FastAPI | 8000 | Model inference |
-| MLflow | 5000 | Experiments/models |
-| Prometheus | 9090 | Metrics collection |
-| Grafana | 3000 | Metrics visualization |
+| MLflow | 5000 | Experiments and model registry |
+| Prometheus | 9090 | Metrics collection and alerts |
+| Grafana | 3000 | Operational dashboard |
 
-## MLflow
+Grafana automatically provisions the forecasting dashboard from `monitoring/grafana/dashboards/`.
 
-Set the tracking server through environment variables:
+## MLflow model lifecycle
 
-```bash
-export MLFLOW_TRACKING_URI=http://localhost:5000
-export MLFLOW_EXPERIMENT=agricultural-price-forecasting
-```
+Training registers each model under a stable name such as `agri-forecast-randomforest`. Every new version receives the `candidate` alias. The best model is compared with the existing `champion` using RMSE; it replaces the champion only when its RMSE is lower.
 
-The MLflow integration records parameters, evaluation metrics, and scikit-learn model artifacts and registers models by name.
+This uses MLflow aliases rather than hard-coded model-version numbers, so serving systems can reference a stable `champion` endpoint.
 
 ## DVC
 
@@ -148,21 +158,26 @@ kubectl port-forward service/agricultural-price-forecasting 8000:8000
 curl http://localhost:8000/health
 ```
 
-## Monitoring
+## Monitoring and drift
 
-FastAPI exposes Prometheus-compatible metrics at `/metrics`. Prometheus is configured to scrape the forecasting service, while Grafana is provisioned with Prometheus as its datasource.
+FastAPI exposes Prometheus-compatible metrics at `/metrics`. Prometheus scrapes the forecasting service and loads alert rules from `monitoring/alerts.yml`.
 
-Example PromQL queries:
+The project also includes a dependency-light Population Stability Index implementation for comparing reference and current numeric distributions:
 
-```text
-forecast_requests_total
-forecast_predictions_total
-rate(forecast_request_latency_seconds_count[5m])
+```python
+from src.monitoring.drift import population_stability_index, drift_status
+
+psi = population_stability_index(reference_values, current_values)
+print(psi, drift_status(psi))
 ```
+
+Operational thresholds are intentionally explicit: below `0.10` is stable, `0.10–0.25` is a warning, and `>=0.25` is critical.
 
 ## CI and retraining
 
-GitHub Actions runs tests and linting on changes. The repository also contains a scheduled retraining workflow that can execute the forecasting pipeline and publish the resulting run to MLflow. In a real production environment, the same workflow can be replaced by an orchestrator such as Airflow, Dagster, or a managed cloud scheduler.
+GitHub Actions runs tests and linting on changes. A weekly scheduled workflow can retrain the models and publish the generated training report. If `MLFLOW_TRACKING_URI` is configured as a repository secret, the workflow also records runs and model versions in the shared MLflow server.
+
+For larger production environments, the same training entry point can be orchestrated by Airflow, Dagster, or a managed cloud scheduler without changing the core ML code.
 
 ## Technology stack
 
@@ -178,7 +193,9 @@ These technologies are included because the repository contains corresponding im
 4. Version data and model lineage.
 5. Separate training from serving.
 6. Instrument production inference.
-7. Keep infrastructure reproducible.
+7. Detect distribution changes before they become silent failures.
+8. Promote models using measurable evaluation criteria.
+9. Keep infrastructure reproducible.
 
 ## License
 
