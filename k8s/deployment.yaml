@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agricultural-forecasting
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: agricultural-forecasting
+  template:
+    metadata:
+      labels:
+        app: agricultural-forecasting
+    spec:
+      containers:
+        - name: forecasting
+          image: agricultural-forecasting:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: MLFLOW_TRACKING_URI
+              value: http://mlflow:5000
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agricultural-forecasting
+spec:
+  selector:
+    app: agricultural-forecasting
+  ports:
+    - port: 8000
+      targetPort: 8000
+  type: ClusterIP
