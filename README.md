@@ -1,101 +1,83 @@
 # Agricultural Price Forecasting & Time-Series MLOps
 
-**End-to-end machine-learning system for agricultural price forecasting, experiment tracking, containerized inference, and Kubernetes deployment.**
+**End-to-end machine-learning system for agricultural price forecasting, experiment tracking, data versioning, monitored inference, and Kubernetes deployment.**
 
 [![CI](https://github.com/Ajayghimire9/Time-series-analysis/actions/workflows/ci.yml/badge.svg)](https://github.com/Ajayghimire9/Time-series-analysis/actions/workflows/ci.yml)
 
-## Overview
-
-This project analyzes Japanese agricultural price observations and builds a leakage-aware forecasting workflow. The original exploratory analysis has been reorganized into reusable Python components and extended into an MLOps-oriented system.
-
-### Architecture
+## System architecture
 
 ```text
-                         +------------------+
-                         | Agricultural CSV |
-                         +--------+---------+
-                                  |
-                                  v
-                    +-------------+-------------+
-                    | Validation / Preprocessing|
-                    +-------------+-------------+
-                                  |
-                                  v
-                       +----------+----------+
-                       | Lag Feature Engine  |
-                       +----------+----------+
-                                  |
-                                  v
-                       +----------+----------+
-                       | Chronological Split |
-                       +----------+----------+
-                                  |
-                         +--------+--------+
-                         |                 |
-                         v                 v
-                      Ridge         Random Forest
-                         |                 |
-                         +--------+--------+
-                                  |
-                                  v
-                           MAE / RMSE
-                                  |
-                                  v
-                             MLflow
-                       experiments + models
-                                  |
-                                  v
-                        Docker / FastAPI
-                                  |
-                                  v
-                           Kubernetes
-                       replicas + probes
+Agricultural data
+      ↓
+DVC versioning → data-quality validation
+      ↓
+Feature engineering → chronological validation
+      ↓
+Ridge / Random Forest
+      ↓
+MAE / RMSE
+      ↓
+MLflow experiments + model registry
+      ↓
+Docker → FastAPI
+      ↓
+Kubernetes (2 replicas)
+      ↓
+Prometheus → Grafana
 ```
 
-## What is implemented
+## Implemented capabilities
 
-### Machine Learning
+### ML
 - Lag-based time-series feature engineering
-- Leakage-aware chronological train/test split
-- Ridge regression baseline
-- Random Forest benchmark
-- MAE and RMSE evaluation
+- Leakage-aware chronological splitting
+- Ridge baseline and Random Forest benchmark
+- MAE/RMSE evaluation
 
 ### MLOps
-- **MLflow** experiment tracking and model logging
-- Configurable `MLFLOW_TRACKING_URI`
-- Reproducible dependency configuration
-- Automated tests with pytest
-- Ruff code-quality checks
+- **MLflow** experiment tracking and registered models
+- **DVC** pipeline definition for reproducibility
+- Explicit data-quality validation gates
+- Reproducible dependency management
+- pytest + Ruff quality gates
 
-### Deployment
-- Dockerized FastAPI inference service
-- `/health` readiness/liveness endpoint
-- `/predict` prediction endpoint
-- Docker Compose local MLflow stack
-- Kubernetes Deployment with **2 replicas**
-- Kubernetes resource requests/limits
-- Kubernetes readiness and liveness probes
-- Kubernetes service discovery for MLflow
+### Production serving
+- FastAPI `/predict` endpoint
+- `/health` health endpoint
+- `/metrics` Prometheus endpoint
+- Request count, prediction count, and latency metrics
+- Dockerized inference
+- Kubernetes Deployment and Service
+- 2 replicas, resource requests/limits, health probes
+
+### Observability
+- Prometheus scraping configuration
+- Grafana Prometheus datasource provisioning
+- Metrics designed for operational dashboards
 
 ## Repository structure
 
 ```text
 .
-├── Datasets/
+├── Datasets/                  # Source dataset
 ├── src/
 │   ├── data/
-│   │   └── loader.py
+│   │   ├── loader.py
+│   │   └── validation.py
 │   ├── models/
 │   │   └── forecasting.py
+│   ├── mlops/
+│   │   └── mlflow_tracker.py
+│   ├── monitoring/
+│   │   └── metrics.py
 │   ├── api.py
 │   └── pipeline.py
 ├── tests/
 ├── k8s/
-│   ├── deployment.yaml
-│   ├── mlflow.yaml
-│   └── README.md
-├── .github/workflows/ci.yml
+├── monitoring/
+│   └── grafana/
+├── .github/workflows/
+├── dvc.yaml
 ├── docker-compose.yml
 ├── Dockerfile
 ├── Makefile
@@ -103,105 +85,100 @@ This project analyzes Japanese agricultural price observations and builds a leak
 └── README.md
 ```
 
-## Run locally
+## Local development
 
 ```bash
-git clone https://github.com/Ajayghimire9/Time-series-analysis.git
-cd Time-series-analysis
 python -m venv .venv
 source .venv/bin/activate
 pip install -e '.[dev]'
 pytest
+ruff check .
 python -m src.pipeline
 ```
+
+## Full local MLOps stack
+
+```bash
+docker compose up --build
+```
+
+Services:
+
+| Service | Port | Purpose |
+|---|---:|---|
+| FastAPI | 8000 | Model inference |
+| MLflow | 5000 | Experiments/models |
+| Prometheus | 9090 | Metrics collection |
+| Grafana | 3000 | Metrics visualization |
 
 ## MLflow
 
-Start the local tracking server with Docker Compose:
-
-```bash
-docker compose up mlflow
-```
-
-In another terminal, run the pipeline against MLflow:
+Set the tracking server through environment variables:
 
 ```bash
 export MLFLOW_TRACKING_URI=http://localhost:5000
-python -m src.pipeline
+export MLFLOW_EXPERIMENT=agricultural-price-forecasting
 ```
 
-The pipeline logs model parameters, MAE/RMSE metrics, and trained scikit-learn models to MLflow.
+The MLflow integration records parameters, evaluation metrics, and scikit-learn model artifacts and registers models by name.
 
-## API
+## DVC
 
-Build and start the inference service:
+The repository contains a DVC pipeline definition so data dependencies and pipeline outputs can be versioned as the project grows.
 
 ```bash
-docker build -t agricultural-forecasting .
-docker run --rm -p 8000:8000 agricultural-forecasting
+dvc repro
 ```
 
-Health check:
-
-```bash
-curl http://localhost:8000/health
-```
-
-Prediction example:
-
-```bash
-curl -X POST http://localhost:8000/predict \
-  -H 'Content-Type: application/json' \
-  -d '{"history":[171,198,196,207,221,226,253,260,275,281,290,301,315,320,330,340,350,360,370,380]}'
-```
+For a team/cloud workflow, configure a DVC remote such as S3 and commit the resulting `.dvc` metadata rather than generated datasets.
 
 ## Kubernetes
 
-The manifests demonstrate a production-oriented deployment pattern:
-
 ```bash
-docker build -t agricultural-forecasting:latest .
 kubectl apply -f k8s/mlflow.yaml
 kubectl apply -f k8s/deployment.yaml
 kubectl get pods
 kubectl get services
 ```
 
-For a local cluster:
+For local development with Minikube or Kind, build/load the image into the cluster and port-forward the service:
 
 ```bash
-kubectl port-forward service/agricultural-forecasting 8000:8000
+kubectl port-forward service/agricultural-price-forecasting 8000:8000
 curl http://localhost:8000/health
 ```
 
-The forecasting service runs two replicas and includes resource limits plus health probes. MLflow is available to the application through the Kubernetes service name `mlflow:5000`.
+## Monitoring
 
-## CI/CD
+FastAPI exposes Prometheus-compatible metrics at `/metrics`. Prometheus is configured to scrape the forecasting service, while Grafana is provisioned with Prometheus as its datasource.
 
-GitHub Actions automatically installs the project, runs Ruff, and executes pytest on pushes and pull requests.
+Example PromQL queries:
+
+```text
+forecast_requests_total
+forecast_predictions_total
+rate(forecast_request_latency_seconds_count[5m])
+```
+
+## CI and retraining
+
+GitHub Actions runs tests and linting on changes. The repository also contains a scheduled retraining workflow that can execute the forecasting pipeline and publish the resulting run to MLflow. In a real production environment, the same workflow can be replaced by an orchestrator such as Airflow, Dagster, or a managed cloud scheduler.
 
 ## Technology stack
 
-**Python · Pandas · NumPy · scikit-learn · MLflow · FastAPI · Docker · Docker Compose · Kubernetes · pytest · Ruff · GitHub Actions · Git**
+**Python · Pandas · NumPy · scikit-learn · MLflow · DVC · FastAPI · Docker · Docker Compose · Kubernetes · Prometheus · Grafana · pytest · Ruff · GitHub Actions · Git**
 
-Every technology listed above is backed by implementation in the repository.
+These technologies are included because the repository contains corresponding implementation/configuration—not merely CV keywords.
 
 ## Engineering principles
 
-1. **No temporal leakage** — training never uses future observations.
-2. **Baseline before complexity** — model improvements are measured against Ridge.
-3. **Reproducibility over screenshots** — metrics are generated by code.
-4. **Operational thinking** — models are tracked, packaged, served, and deployable.
-5. **Simple infrastructure first** — the local stack can be run without a cloud account.
-
-## Roadmap
-
-- [ ] DVC dataset versioning
-- [ ] Automated data-quality checks
-- [ ] Model registry promotion workflow
-- [ ] Cloud deployment
-- [ ] Prometheus/Grafana monitoring
-- [ ] Scheduled retraining workflow
+1. Prevent temporal leakage.
+2. Establish simple baselines before complex models.
+3. Generate metrics from executable code.
+4. Version data and model lineage.
+5. Separate training from serving.
+6. Instrument production inference.
+7. Keep infrastructure reproducible.
 
 ## License
 
