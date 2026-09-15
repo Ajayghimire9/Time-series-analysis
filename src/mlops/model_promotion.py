@@ -28,5 +28,4 @@ def promote_if_better(model_name: str, candidate_version: str, candidate_rmse: f
 
 def load_champion(model_name: str):
     """Load the current champion through its stable MLflow alias."""
-    tracking_uri = mlflow.get_tracking_uri()
     return mlflow.pyfunc.load_model(f"models:/{model_name}@champion")
