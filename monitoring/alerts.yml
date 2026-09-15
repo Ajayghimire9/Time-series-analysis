@@ -1,0 +1,20 @@
+groups:
+  - name: forecasting-service
+    rules:
+      - alert: ForecastingApiDown
+        expr: up{job="forecasting-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: Forecasting API is unavailable
+          description: Prometheus cannot scrape the forecasting API.
+
+      - alert: ForecastingHighLatency
+        expr: histogram_quantile(0.95, sum(rate(forecast_request_latency_seconds_bucket[5m])) by (le)) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Forecasting API latency is high
+          description: The 95th percentile request latency is above one second.
